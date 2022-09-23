@@ -7,18 +7,45 @@ import styles from "./select.module.css";
  * @property {string} label - The text that will be displayed in the dropdown.
  * @property {any | number} value - The value of the option.
  */
-type SelectOption = {
+export type SelectOption = {
   label: string;
   value: any | number;
 };
 
-type SelectProps = {
-  options: SelectOption[];
+/**
+ * SingleSelectProps is an object with a property called multiple that is optional and has a type of
+ * false, a property called value that is optional and has a type of SelectOption, and a property
+ * called onChange that is required and has a type of a function that takes a parameter of type
+ * SelectOption or undefined and returns void.
+ * @property multiple - boolean - whether the select should allow multiple values to be selected
+ * @property {SelectOption} value - The current value of the select.
+ * @property onChange - This is a function that will be called when the user selects an option.
+ */
+type SingleSelectProps = {
+  multiple?: false;
   value?: SelectOption;
   onChange: (value: SelectOption | undefined) => void;
 };
 
-export function Select({ value, onChange, options }: SelectProps) {
+/**
+ * MultipleSelectProps is a type that has a property called multiple that is a boolean, a property
+ * called value that is an array of SelectOption, and a property called onChange that is a function
+ * that takes an array of SelectOption and returns nothing.
+ * @property multiple - true - This is a required property for the component to work.
+ * @property {SelectOption[]} value - The current value of the select.
+ * @property onChange - This is a function that will be called when the user selects an option.
+ */
+type MultipleSelectProps = {
+  multiple: true;
+  value: SelectOption[];
+  onChange: (value: SelectOption[]) => void;
+};
+
+type SelectProps = {
+  options: SelectOption[];
+} & (SingleSelectProps | MultipleSelectProps);
+
+export function Select({ multiple, value, onChange, options }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
 
@@ -27,7 +54,9 @@ export function Select({ value, onChange, options }: SelectProps) {
    * value.
    */
   function clearOption() {
-    onChange(undefined);
+    /* This is a ternary operator. If the value is true, then the first statement is executed,
+    otherwise the second statement is executed. */
+    multiple ? onChange([]) : onChange(undefined);
   }
 
   /**
@@ -35,7 +64,17 @@ export function Select({ value, onChange, options }: SelectProps) {
    * @param {SelectOption} option - SelectOption - the option that was clicked
    */
   function selectOption(option: SelectOption) {
-    if (option !== value) onChange(option);
+    /* This is a ternary operator. If the value is true, then the first statement is executed,
+    otherwise the second statement is executed. */
+    if (multiple) {
+      if (value.includes(option)) {
+        onChange(value.filter((o) => o != option));
+      } else {
+        onChange([...value, option]);
+      }
+    } else {
+      if (option !== value) onChange(option);
+    }
   }
 
   /**
@@ -45,7 +84,7 @@ export function Select({ value, onChange, options }: SelectProps) {
    * @returns The function isOptionSelected is being returned.
    */
   function isOptionSelected(option: SelectOption) {
-    return option === value;
+    return multiple ? value.includes(option) : option === value;
   }
 
   /* This is a React hook that is called when the component is mounted and when the isOpen state
@@ -61,7 +100,23 @@ export function Select({ value, onChange, options }: SelectProps) {
       tabIndex={0}
       className={styles.container}
     >
-      <span className={styles.value}>{value?.label}</span>
+      <span className={styles.value}>
+        {multiple
+          ? value.map((v) => (
+              <button
+                key={v.value}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  selectOption(v);
+                }}
+                className={styles["option-badge"]}
+              >
+                {v.label}
+                <span className={styles["remove-btn"]}>&times;</span>
+              </button>
+            ))
+          : value?.label}
+      </span>
       <button
         onClick={(e) => {
           e.stopPropagation();
